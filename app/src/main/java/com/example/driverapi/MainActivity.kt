@@ -1,5 +1,6 @@
 package com.example.driverapi
 
+import GoogleDriveManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
@@ -39,20 +40,56 @@ class MainActivity : AppCompatActivity() {
     private val REQUEST_REMOTE_CONSENT = 102
 
     // -----------------------------------------------------------
+    private lateinit var googleDriveManager: GoogleDriveManager
     private lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        requestSignIn()
+        //requestSignIn()
         // After change -----------
+        googleDriveManager = GoogleDriveManager(this)
 
 
+        CoroutineScope(Dispatchers.IO).launch {
+            val fileName = "news.json"
+            val fileContent = googleDriveManager.getFileContent(fileName)
+            val jsonArray = JSONArray(fileContent)
+            Log.d("jsonArray jsonArray ", jsonArray.toString())
+            val articleList = mutableListOf<ArticleData>()
+            for (i in 0 until jsonArray.length()) {
+                val jsonObject = jsonArray.getJSONObject(i)
+                val image = jsonObject.getString("Image")
+                val link = jsonObject.getString("Link")
+                val title = jsonObject.getString("Title")
+                val article = ArticleData(image, link, title)
+                articleList.add(article)
+            }
+            withContext(Dispatchers.Main) {
+                val recyclerView = binding.jsonRecycler
+                recyclerView.layoutManager = LinearLayoutManager(this@MainActivity)
+                val adapter = ArticleAdapter(this@MainActivity, articleList)
+                recyclerView.adapter = adapter
+            }
+        }
+    }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            GoogleDriveManager.REQUEST_CODE_SIGN_IN -> {
+                googleDriveManager.handleSignInResult(data)
+            }
+
+        }
     }
 
 
-    private fun requestSignIn() {
+
+
+
+    //Code before create googledrivemanager
+    /*private fun requestSignIn() {
         val signInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
             .requestScopes(Scope(DriveScopes.DRIVE))
@@ -146,7 +183,7 @@ class MainActivity : AppCompatActivity() {
                 Log.e("GoogleDriveConnection", "$errorMessage, Account Info: $accountInfo")
                 Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
             }
-    }
+    }*/
 
 
 }
